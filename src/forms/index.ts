@@ -1,28 +1,7 @@
 import { Login } from './login';
 import { Signup } from './signup';
+import { TryCatch } from '../try';
 import { InputValues, ClassForm, Form as FormType } from './types';
-
-class TryCatch {
-  public static validator(fn: (...args: any[]) => void) {
-    const ref = this;
-
-    return function (...args: any[]) {
-      try {
-        fn.apply(ref, args);
-
-        return {
-          error: '',
-          isValid: true,
-        };
-      } catch (error) {
-        return {
-          error: (error as any).message as string,
-          isValid: false,
-        };
-      }
-    };
-  }
-}
 
 class Validator {
   public static input(input: string, value: any) {
