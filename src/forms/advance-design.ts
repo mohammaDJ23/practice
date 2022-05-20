@@ -1,96 +1,129 @@
+interface Class {
+  new (...args: any[]): {};
+}
+
+interface InputInfo<T = any> {
+  value: T;
+  isValid: boolean;
+  validator: Function;
+  defaultError: string;
+  error: string;
+}
+
+interface Input {
+  [key: string]: InputInfo;
+}
+
+type FormType<T> = {
+  [K in keyof T]: T[K] extends Function ? T[K] : InputInfo<T[K]>;
+};
+
 enum Symboles {
-  VALUE = 'VALUE',
-  IS_VALID = 'IS_VALID',
-  ERROR = 'ERROR',
-  VALIDATOR = 'VALIDATOR',
+  INPUT = 'INPUT',
   FORM = 'FORM',
-  REMOVE_VALUE = 'REMOVE_VALUE',
+  BEFORE = 'BEFORE',
+  AFTER = 'AFTER',
 }
 
-class Form {
-  static instance() {
-    return function (target: any) {
-      const object = new target();
+function Form() {
+  return function (target: Class) {
+    const object = new target();
 
-      for (const key in object) {
-        object[key] = Reflect.getMetadata(Symboles.VALUE, target.prototype, key);
+    for (const key in object) {
+      const inputInfo = Reflect.getMetadata(Symboles.INPUT, target.prototype, key);
+
+      if (inputInfo) {
+        // @ts-ignore
+        object[key] = inputInfo;
       }
+    }
 
-      Reflect.defineMetadata(Symboles.FORM, Object.seal(object), target.prototype);
-    };
-  }
+    Reflect.defineMetadata(Symboles.FORM, object, target.prototype);
+  };
 }
 
-class Input {
-  static value() {
-    return function (target: any, name: string) {
-      const value = Reflect.getMetadata('design:type', target, name);
-      Reflect.defineMetadata(Symboles.VALUE, value(), target, name);
-    };
-  }
-
-  static isValid(isValid: boolean) {
-    return function (target: any, name: string) {
-      Reflect.defineMetadata(Symboles.IS_VALID, isValid, target, name);
-    };
-  }
-
-  static error(error: string = '') {
-    return function (target: any, name: string) {
-      Reflect.defineMetadata(Symboles.ERROR, { defaultError: error, error: '' }, target, name);
-    };
-  }
-
-  static validator(validator: Function) {
-    return function (target: any, name: string) {
-      Reflect.defineMetadata(Symboles.VALIDATOR, validator, target, name);
-    };
-  }
-
-  static getValue(target: Function, name: string) {
-    return Reflect.getMetadata(Symboles.VALUE, target.prototype, name);
-  }
-
-  static getIsValid(target: Function, name: string) {
-    return Reflect.getMetadata(Symboles.IS_VALID, target.prototype, name);
-  }
-
-  static getError(target: Function, name: string) {
-    Reflect.getMetadata(Symboles.ERROR, target.prototype, name);
-  }
-
-  static getValidator(target: Function, name: string) {
-    return Reflect.getMetadata(Symboles.VALIDATOR, target.prototype, name);
-  }
+function getInput(target: any, name: string) {
+  return Reflect.getMetadata(Symboles.INPUT, target, name) || {};
 }
 
-class Validation {
-  static isTextLengthValid(value: string) {
-    return value.length;
-  }
-
-  static isArrayLengthValid(value: Array<any>) {
-    return value.length;
-  }
+function value() {
+  return function (target: any, name: string) {
+    const value = Reflect.getMetadata('design:type', target, name);
+    const input = getInput(target, name);
+    Reflect.defineMetadata(Symboles.INPUT, { ...input, value: value() }, target, name);
+  };
 }
 
-@Form.instance()
+function isValid(isValid: boolean) {
+  return function (target: any, name: string) {
+    const input = getInput(target, name);
+    Reflect.defineMetadata(Symboles.INPUT, { ...input, isValid }, target, name);
+  };
+}
+
+function error(error: string = '') {
+  return function (target: any, name: string) {
+    const input = getInput(target, name);
+    Reflect.defineMetadata(Symboles.INPUT, { ...input, defaultError: error, error: '' }, target, name);
+  };
+}
+
+function validator(validator: Function) {
+  return function (target: any, name: string) {
+    const input = getInput(target, name);
+    Reflect.defineMetadata(Symboles.INPUT, { ...input, validator }, target, name);
+  };
+}
+
+function BeforeSubmit() {
+  return function (target: any, name: string) {
+    Reflect.defineMetadata(Symboles.BEFORE, target[name], target);
+  };
+}
+
+function AfterSubmit() {
+  return function (target: any, name: string) {
+    Reflect.defineMetadata(Symboles.AFTER, target[name], target);
+  };
+}
+
+function isTextLengthValid(value: string) {
+  return value.length;
+}
+
+function isArrayLengthValid(value: Array<any>) {
+  return value.length;
+}
+
+@Form()
 class Signin {
-  @Input.value()
-  @Input.isValid(false)
-  @Input.error('Please insert an valid email.')
-  @Input.validator(Validation.isTextLengthValid)
+  @value()
+  @isValid(false)
+  @error('Please insert an valid email.')
+  @validator(isTextLengthValid)
   email: string;
 
-  @Input.value()
-  @Input.isValid(false)
-  @Input.error('Please insert a valid password')
-  @Input.validator(Validation.isTextLengthValid)
+  @value()
+  @isValid(false)
+  @error('Please insert a valid password')
+  @validator(isTextLengthValid)
   password: string;
 
-  @Input.value()
-  @Input.isValid(false)
-  @Input.error('Please insert some name')
-  @Input.validator(Validation.isArrayLengthValid)
-  names: Array<any>;
+  @BeforeSubmit()
+  before(state: Input, form: FormType<Signin>) {}
+
+  @AfterSubmit()
+  after(state: Input, form: FormType<Signin>) {}
 }
+
+async function submit<T extends Function>(form: T) {
+  const state = {};
+  const formInfo: {} = Reflect.getMetadata(Symboles.FORM, form.prototype) || {};
+  const beforeSubmit: Function = Reflect.getMetadata(Symboles.BEFORE, form.prototype) || function () {};
+  const afterSubmit: Function = Reflect.getMetadata(Symboles.AFTER, form.prototype) || function () {};
+  const beforeData: any = beforeSubmit(state, formInfo);
+  const data: {} = await Promise.resolve({});
+  const afterData: any = afterSubmit(state, formInfo);
+}
+
+submit(Signin);
