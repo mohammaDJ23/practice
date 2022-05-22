@@ -1,20 +1,27 @@
-export type Input = {
-  [key: string]: {
-    value: any;
-    isValid: boolean;
-    error: string;
-  };
-};
-
-export interface Form {
-  inputs: Input;
-  isFormValid: boolean;
+export interface Class {
+  new (...args: any[]): {};
 }
 
-export type ClassForm = {
-  new (...args: any[]): Form;
+export interface InputInfo<T = any> {
+  value: T;
+  isValid: boolean;
+  validator: Function;
+  defaultError: string;
+  error: string;
+  type: Function;
+}
+
+export interface Input {
+  [key: string]: InputInfo;
+}
+
+export type FormType<T> = {
+  [K in keyof T]: T[K] extends Function ? T[K] : InputInfo<T[K]>;
 };
 
-export type InputValues = {
-  [key: string]: any;
-};
+export enum Symboles {
+  INPUT = 'INPUT',
+  FORM = 'FORM',
+  BEFORE = 'BEFORE',
+  AFTER = 'AFTER',
+}

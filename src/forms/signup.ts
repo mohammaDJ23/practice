@@ -1,23 +1,36 @@
+import { AfterSubmit, BeforeSubmit, Error, Form, IsValid, Validator, Value } from './decorators';
+import { FormType } from './types';
+import { isTextLengthValid } from './validations';
+
+@Form()
 export class Signup {
-  inputs = {
-    name: {
-      value: '',
-      isValid: false,
-      error: '',
-    },
+  @Value()
+  @IsValid(false)
+  @Error('Please insert a valid email')
+  @Validator(isTextLengthValid)
+  email: string;
 
-    email: {
-      value: '',
-      isValid: false,
-      error: '',
-    },
+  @Value()
+  @IsValid(false)
+  @Error('Please insert a valid password')
+  @Validator(isTextLengthValid)
+  password: string;
 
-    password: {
-      value: '',
-      isValid: false,
-      error: '',
-    },
-  };
+  @Value()
+  @IsValid(false)
+  @Error('Please insert a valid name')
+  @Validator(isTextLengthValid)
+  name: string;
 
-  isFormValid = false;
+  @Value()
+  @IsValid(false)
+  @Error('Please insert a valid lastname')
+  @Validator(isTextLengthValid)
+  lastName: string;
+
+  @BeforeSubmit()
+  before(state: FormType<Signup>) {}
+
+  @AfterSubmit()
+  after(state: FormType<Signup>) {}
 }
